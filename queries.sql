@@ -41,7 +41,7 @@ LIMIT 30
 --The second finds PPG but also filters out any null entry/ when a player did not play that season 
 SELECT 
 Season, AVG(PPG) AS avg_PPG, COUNT(*) AS player_count, AVG(G) AS avg_GP
---In addition to average points per game, I also  
+--In addition to average points per game, I also include the player count and the average number of games players play 
 FROM player_avg
 GROUP BY Season
 ORDER BY Season;
