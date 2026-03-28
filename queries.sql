@@ -47,6 +47,32 @@ GROUP BY Season
 ORDER BY Season;
 
 --Q4: Which players have averaged 20+ PPG in at least 5 different seasons?
+--There has been a total of 121 players in the history of the NBA who have averaged above 20+ PPG in at least 5 different seasons, with LeBron James at the top of the list with a total of 19 seasons
+  WITH clean_stats AS (
+      SELECT * FROM player_stats WHERE Tm = 'TOT'
+      UNION ALL
+      SELECT *  FROM player_stats
+      WHERE NOT EXISTS (
+          SELECT 1 FROM player_stats p2
+          WHERE p2.Player = player_stats.Player
+            AND p2.Season = player_stats.Season
+            AND p2.Tm = 'TOT'
+      )
+  ),
+ player_avg AS (
+	SELECT Season, Player, ROUND(PTS/G, 2) AS PPG, G
+	FROM clean_stats
+	WHERE G >= 1
+  )
+SELECT 
+    Player,
+    COUNT(Season)    AS seasons_above_20,
+    ROUND(AVG(PPG), 1) AS avg_ppg_in_those_seasons
+FROM player_avg
+WHERE PPG >= 20
+GROUP BY Player
+HAVING COUNT(Season) >= 5
+ORDER BY seasons_above_20 DESC
 
 --Q5: How many players fall into each scoring tier per season in 2022?
 
