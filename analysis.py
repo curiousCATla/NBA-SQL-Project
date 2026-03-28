@@ -52,8 +52,6 @@ ORDER BY PPG DESC
 LIMIT 30;
 """, conn)
 
-q2['PPG'] = pd.to_numeric(q2['PPG'])
-q2['APG'] = pd.to_numeric(q2['APG'])
 q2['Label'] = q2['Player'] + '\n(' + q2['Season'].astype(str) + ')'
 
 fig, ax = plt.subplots(figsize=(10, 8))
@@ -87,3 +85,4 @@ os.makedirs('images', exist_ok=True)
 plt.savefig('images/ppg_vs_apg_scatter.png', dpi=150, bbox_inches='tight')
 plt.show()
 
+conn.close()
