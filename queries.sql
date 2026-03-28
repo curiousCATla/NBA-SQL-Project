@@ -76,6 +76,42 @@ ORDER BY seasons_above_20 DESC
 
 --Q5: How many players fall into each scoring tier per season in 2022?
 
+WITH clean_stats AS (
+    SELECT * FROM player_stats WHERE Tm = 'TOT'
+    UNION ALL
+    SELECT * FROM player_stats
+    WHERE NOT EXISTS (
+        SELECT 1 FROM player_stats p2
+        WHERE p2.Player = player_stats.Player
+          AND p2.Season = player_stats.Season
+          AND p2.Tm = 'TOT'
+    )
+),
+player_tier_2022 AS (
+    SELECT
+        Player,
+        Tm,
+        CAST(PTS AS FLOAT) / G AS PPG,
+        CASE
+            WHEN CAST(PTS AS FLOAT) / G >= 25 THEN 'Elite (25+)'
+            WHEN CAST(PTS AS FLOAT) / G >= 20 THEN 'Star (20-24)'
+            WHEN CAST(PTS AS FLOAT) / G >= 15 THEN 'Starter (15-19)'
+            WHEN CAST(PTS AS FLOAT) / G >= 10 THEN 'Role Player (10-14)'
+            ELSE 'Bench (< 10)'
+        END AS scoring_tier
+	  -- using 'CASE WHEN' to define scoring tiers, and categorize each player 
+    FROM clean_stats
+    WHERE Season = 2022
+      AND G >= 1
+)
+SELECT
+    scoring_tier,
+    COUNT(*) AS num_players
+FROM player_tier_2022
+GROUP BY scoring_tier
+ORDER BY MIN(PPG) DESC;
+-- using MIN(PPG) ensure the table is ordered from the highest scoring tier to the lowest
+
 --Q6: Which players scored above the league average PPG in the 2022 season?
 
 --Q7: For 2022, how did each player's season PPG average compare to their actual per-game PPG from boxscores?
