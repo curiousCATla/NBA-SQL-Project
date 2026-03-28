@@ -112,9 +112,9 @@ GROUP BY scoring_tier
 ORDER BY MIN(PPG) DESC;
 -- using MIN(PPG) ensure the table is ordered from the highest scoring tier to the lowest
 
---Q6: Which players scored above the league average PPG in the 2022 season?
+--Q6: Who are the leading scoring rookies each year in the NBA since the 1953 season, and what is their average PPG?
 
---Q7: For 2022, how did each player's season PPG average compare to their actual per-game PPG from boxscores?
+--Q7: For 2022, what are each player's scoring, assist, and rebound percentages relative to the rest of the league?
 
 --Q8: Who were the top 3 scorers on each team in the 2022 season?
 
