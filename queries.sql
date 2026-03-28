@@ -19,7 +19,9 @@ WHERE PPG >= 25  AND APG >= 7 AND G >= 41
 --An NBA season has 82 games, setting a minimum on the number of games played (G >= 41), filters outliers
 ORDER BY PPG DESC
 LIMIT 30
+
 --Q3: How has the league-wide average points per game changed each season?
+SELECT
 
 --Q4: Which players have averaged 20+ PPG in at least 5 different seasons?
 
