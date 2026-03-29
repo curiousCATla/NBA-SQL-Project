@@ -1,5 +1,13 @@
 # NBA-SQL-Project
 
+##Overview
+
+This project analyses an NBA database from Kaggle. The dataset includes almost all player stats for all NBA seasons until 2023, which were sourced from Basketball Reference, the team Payroll and player salary data were sourced from Hoops Hype.
+
+Link: https://www.kaggle.com/datasets/loganlauton/nba-players-and-team-data?resource=download&select=NBA+Player+Stats%281950+-+2022%29.csv
+
+
+
 ## Key Questions & Findings
 - Who were the top 10 single-season scorers of all time?
 - Which players averaged 25+ PPG and 7+ AST in the same season?
