@@ -153,7 +153,7 @@ ORDER BY MIN(PPG) DESC;
     AND Season >= 1953
   ORDER BY Season;
 
---Q7: For 2022, what are each player's scoring, assist, and rebound percentages relative to the rest of the league?
+--Q7: What are each player's scoring, assist, and rebound percentages relative to the rest of the league in the 2022 season?
 
 --Q8: Who were the top 3 scorers on each team in the 2022 season?
 
