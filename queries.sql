@@ -155,6 +155,34 @@ ORDER BY MIN(PPG) DESC;
 
 --Q7: What are each player's scoring, assist, and rebound percentages relative to the rest of the league in the 2022 season?
 
+  WITH clean_stats AS (
+      SELECT * FROM player_stats WHERE Tm = 'TOT'
+      UNION ALL
+      SELECT * FROM player_stats
+      WHERE NOT EXISTS (
+          SELECT 1 FROM player_stats p2
+          WHERE p2.Player = player_stats.Player
+            AND p2.Season = player_stats.Season
+            AND p2.Tm = 'TOT'
+      )
+  ),
+league_2022 AS (
+      SELECT
+          Player, Tm, G,
+          ROUND(PTS * 1.0 / G, 1) AS PPG,                                                                                                          
+          ROUND(AST * 1.0 / G, 1) AS APG,
+          ROUND(TRB * 1.0 / G, 1) AS RPG                                                                                                           
+      FROM clean_stats                                                                                                                             
+      WHERE Season = 2022 AND G >= 20
+)
+SELECT 
+	Player, Player, Tm, G, PPG, APG, RPG, 
+	ROUND(PERCENT_RANK() OVER (ORDER BY PPG) * 100, 1) AS pts_percentile,
+    ROUND(PERCENT_RANK() OVER (ORDER BY APG) * 100, 1) AS ast_percentile,                                                                    
+    ROUND(PERCENT_RANK() OVER (ORDER BY RPG) * 100, 1) AS reb_percentile 
+FROM league_2022
+ORDER BY pts_percentile DESC;  
+
 --Q8: Who were the top 3 scorers on each team in the 2022 season?
 
 --Q9: Which players improved their scoring average the most from 2021 to 2022?
