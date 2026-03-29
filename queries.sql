@@ -204,4 +204,45 @@ SELECT
 
 --Q9: Which players improved their scoring average the most from 2021 to 2022?
 
+WITH clean_stats AS (
+      SELECT * FROM player_stats WHERE Tm = 'TOT'
+      UNION ALL
+      SELECT * FROM player_stats
+      WHERE NOT EXISTS (
+          SELECT 1 FROM player_stats p2
+          WHERE p2.Player = player_stats.Player
+            AND p2.Season = player_stats.Season
+            AND p2.Tm = 'TOT'
+      )
+  ),
+  season_2021 AS (                                                                                                                                 
+      SELECT      
+          Player,
+          ROUND(PTS * 1.0 / G, 1) AS PPG_2021
+      FROM clean_stats
+      WHERE Season = 2021 AND G >= 20
+  ),                                                                                                                                               
+  season_2022 AS (
+      SELECT                                                                                                                                       
+          Player, Tm,
+          ROUND(PTS * 1.0 / G, 1) AS PPG_2022
+      FROM clean_stats
+      WHERE Season = 2022 AND G >= 20
+  ),                                                                                                                                               
+  combined AS (
+      SELECT                                                                                                                                       
+          s22.Player,
+          s22.Tm,
+          s21.PPG_2021,
+          s22.PPG_2022,
+          ROUND(s22.PPG_2022 - s21.PPG_2021, 1) AS improvement
+      FROM season_2022 s22                                                                                                                         
+      JOIN season_2021 s21
+          ON s22.Player = s21.Player                                                                                                               
+  )               
+  SELECT Player, Tm, PPG_2021, PPG_2022, improvement
+  FROM combined                                                                                                                                    
+  ORDER BY improvement DESC
+  LIMIT 15; 
+
 --Q10: Which players were the most consistent scorers in 2022?
