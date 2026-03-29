@@ -186,6 +186,22 @@ ORDER BY pts_percentile DESC;
 
 --Q8: Who were the top 3 scorers on each team in the 2022 season?
 
+ WITH league_2022 AS (
+      SELECT
+          Player, Tm, G,PTS, 
+			RANK() OVER (PARTITION BY Tm ORDER BY PTS DESC) AS team_ranking
+      FROM player_stats                                                                                                                        
+      WHERE Season = 2022
+	  AND G>=1
+)
+SELECT
+	Tm, team_ranking,
+	Player, PTS, G 
+	FROM league_2022
+	WHERE team_ranking <= 3
+	--I notice that the WHERE condition requires the team_ranking to be calculated from the input table, therefore, I had to move it inside the CTE 
+	ORDER BY Tm, team_ranking;
+
 --Q9: Which players improved their scoring average the most from 2021 to 2022?
 
 --Q10: Which players were the most consistent scorers in 2022?
