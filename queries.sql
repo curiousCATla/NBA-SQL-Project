@@ -114,6 +114,42 @@ ORDER BY MIN(PPG) DESC;
 
 --Q6: Who are the leading scoring rookies each year in the NBA since the 1953 season, and what is their average PPG?
 
+  WITH clean_stats AS (
+      SELECT * FROM player_stats WHERE Tm = 'TOT'
+      UNION ALL
+      SELECT * FROM player_stats
+      WHERE NOT EXISTS (
+          SELECT 1 FROM player_stats p2
+          WHERE p2.Player = player_stats.Player
+            AND p2.Season = player_stats.Season
+            AND p2.Tm = 'TOT'
+      )
+  ),
+  rookie_year AS (
+      SELECT Player, MIN(Season) AS rookie_season
+      FROM player_stats
+      GROUP BY Player
+  ),
+  rookie_stats AS (
+      SELECT cs.Player, cs.Season, cs.Tm, cs.G,
+             ROUND(cs.PTS  / cs.G, 2) AS PPG
+      FROM clean_stats cs
+      JOIN rookie_year ry
+          ON cs.Player = ry.Player
+         AND cs.Season = ry.rookie_season
+      WHERE cs.G >= 20
+  ),
+  ranked_rookies AS (
+      SELECT *,
+             RANK() OVER (PARTITION BY Season ORDER BY PPG DESC) AS ppg_rank
+      FROM rookie_stats
+  )
+  SELECT Player, Season, Tm, G, PPG
+  FROM ranked_rookies
+  WHERE ppg_rank = 1
+    AND Season >= 1953
+  ORDER BY Season;
+
 --Q7: For 2022, what are each player's scoring, assist, and rebound percentages relative to the rest of the league?
 
 --Q8: Who were the top 3 scorers on each team in the 2022 season?
