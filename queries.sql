@@ -129,6 +129,7 @@ ORDER BY MIN(PPG) DESC;
       SELECT Player, MIN(Season) AS rookie_season
       FROM player_stats
       GROUP BY Player
+	  --By only considering 2 columns, it makes the SQL more efficient
   ),
   rookie_stats AS (
       SELECT cs.Player, cs.Season, cs.Tm, cs.G,
@@ -137,11 +138,13 @@ ORDER BY MIN(PPG) DESC;
       JOIN rookie_year ry
           ON cs.Player = ry.Player
          AND cs.Season = ry.rookie_season
+	  --Using 2 distinct parameters for JOIN to find the player's rookie stats
       WHERE cs.G >= 20
   ),
   ranked_rookies AS (
       SELECT *,
              RANK() OVER (PARTITION BY Season ORDER BY PPG DESC) AS ppg_rank
+	  --Using a partition to compare each player's rookie season, and finding the rookie with the highest points per game. 
       FROM rookie_stats
   )
   SELECT Player, Season, Tm, G, PPG
