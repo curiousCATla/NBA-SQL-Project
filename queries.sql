@@ -246,3 +246,43 @@ WITH clean_stats AS (
   LIMIT 15; 
 
 --Q10: Which players were the most consistent scorers in 2022?
+-- For this query, both the player_stats and the player_boxscores tables were used to analyise player's performance in each game
+WITH season_avgs AS (
+      SELECT
+          Player,
+          Tm,
+          G,
+          ROUND(PTS * 1.0 / G, 1) AS avg_ppg
+      FROM player_stats                                                                                                                            
+      WHERE Season = 2022
+        AND G >= 40                                                                                                                                
+        AND Tm != 'TOT'
+  ),
+  consistency AS (
+      SELECT
+          pb.PLAYER_NAME,                                                                                                                          
+          pb.Team,
+          sa.G AS games_played,                                                            
+          sa.avg_ppg,
+          ROUND(
+              SQRT(AVG((pb.PTS - sa.avg_ppg) * (pb.PTS - sa.avg_ppg)))
+          , 1) AS std_dev                                                                  
+      FROM player_boxscores pb
+      JOIN season_avgs sa                                                                                                                          
+          ON  pb.PLAYER_NAME = sa.Player
+          AND pb.Team        = sa.Tm                                                                                                               
+          AND pb.Season      = 2022
+      GROUP BY pb.PLAYER_NAME, pb.Team, sa.avg_ppg, sa.G                                                                                           
+  )               
+  SELECT
+      PLAYER_NAME,                                                                                                                                 
+      Team,
+      games_played,                                                                                                                                
+      avg_ppg,    
+      std_dev
+  FROM consistency
+  WHERE avg_ppg >= 15
+  ORDER BY std_dev ASC
+  LIMIT 15;
+
+
