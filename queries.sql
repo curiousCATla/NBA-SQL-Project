@@ -180,6 +180,7 @@ SELECT
 	ROUND(PERCENT_RANK() OVER (ORDER BY PPG) * 100, 1) AS pts_percentile,
     ROUND(PERCENT_RANK() OVER (ORDER BY APG) * 100, 1) AS ast_percentile,                                                                    
     ROUND(PERCENT_RANK() OVER (ORDER BY RPG) * 100, 1) AS reb_percentile 
+-- the 'PERCENT_RANK() OVER(ORDER BY)' window function ranks calculates the relative percentile rank of a row within this set of data 
 FROM league_2022
 ORDER BY pts_percentile DESC;  
 
