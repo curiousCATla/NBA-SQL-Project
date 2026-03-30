@@ -1,9 +1,6 @@
 # 7. Player Comparison Tool
 # This script allows users to input player names and generates a radar chart comparing their percentile ranks in key stats for the 2022 season. 
 # The input is a comma-separated list of player names, and the output is a radar chart visualizing how each player ranks in points, assists, rebounds, steals, and blocks compared to their peers in the 2022 season.
-# 7. Player Comparison Tool
-# This script allows users to input player names and generates a radar chart comparing their percentile ranks in key stats for the 2022 season. 
-# The input is a comma-separated list of player names, and the output is a radar chart visualizing how each player ranks in points, assists, rebounds, steals, and blocks compared to their peers in the 2022 season.
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -51,6 +48,8 @@ ORDER BY pts_percentile DESC;
 
 """,conn) # dataframe with player stats and their percentile ranks in points, assists, rebounds, steals, and blocks for the 2022 season.
 
+# the NBA has many international players, and some of the characters used in their names are not found on the English keyboard (e.g. Luka Dončić)
+# the normlize function is designed to overcome this challenge
 def normalize(name):
     return unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii').lower()
 # unicodedata.normalize('NFKD') decomposes accented characters (e.g. č → c + accent mark)
