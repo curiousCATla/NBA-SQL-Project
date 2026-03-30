@@ -1,6 +1,9 @@
 # 7. Player Comparison Tool
 # This script allows users to input player names and generates a radar chart comparing their percentile ranks in key stats for the 2022 season. 
 # The input is a comma-separated list of player names, and the output is a radar chart visualizing how each player ranks in points, assists, rebounds, steals, and blocks compared to their peers in the 2022 season.
+# 7. Player Comparison Tool
+# This script allows users to input player names and generates a radar chart comparing their percentile ranks in key stats for the 2022 season. 
+# The input is a comma-separated list of player names, and the output is a radar chart visualizing how each player ranks in points, assists, rebounds, steals, and blocks compared to their peers in the 2022 season.
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -8,6 +11,8 @@ import os
 import sqlite3
 from adjustText import adjust_text
 import numpy as np
+import unicodedata
+import difflib
 conn = sqlite3.connect('nba.db')
 q6 = pd.read_sql_query("""
 
@@ -46,19 +51,52 @@ ORDER BY pts_percentile DESC;
 
 """,conn) # dataframe with player stats and their percentile ranks in points, assists, rebounds, steals, and blocks for the 2022 season.
 
+def normalize(name):
+    return unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii').lower()
+# unicodedata.normalize('NFKD') decomposes accented characters (e.g. č → c + accent mark)
+# .encode('ascii', 'ignore') drops the accent marks, .decode('ascii') converts back to a string
+# so "Dončić" → "doncic", allowing plain English keyboard input to match accented names
+
+name_map = {normalize(p): p for p in q6['Player']}  # maps normalized name → original name
+
 raw_input = input("Enter player names (comma-separated): ").strip()
 player_names = [name.strip() for name in raw_input.split(',')]
 
 players = []
 for name in player_names:
-    row = q6[q6['Player'].str.lower() == name.lower()] 
-    # q6['Player'].str.lower() == name.lower() compare the lowercase version of the 'Player' column with the lowercase version of the input name,
-    # The result is a column of True/False, wrapping a DataFrame in [] with a True/False column inside is called boolean indexing. 
-    # It filters the table, keeping only the rows where the value is True. 
-    if row.empty:
-        print(f"'{name}' not found, skipping.")
-    else:
-        players.append(row.iloc[0])
+    current_name = name
+    # Outer loop: retries the full lookup whenever the user re-enters a name after typing 'no'.
+    # Breaks out only when a player is successfully matched and appended.
+    while True:
+        match = name_map.get(normalize(current_name))
+        if match:
+            players.append(q6[q6['Player'] == match].iloc[0])
+            break
+
+        suggestions = difflib.get_close_matches(normalize(current_name), name_map.keys(), n=1, cutoff=0.6)
+        if suggestions:
+            closest = name_map[suggestions[0]]
+            # Inner loop: retries only the yes/no prompt until a valid answer is given.
+            # Breaks out on 'yes' or 'no'; exits the script on 'stop'.
+            while True:
+                answer = input(f"'{current_name}' not found. Did you mean '{closest}'? (yes/no/stop): ").strip().lower()
+                if answer == 'yes':
+                    players.append(q6[q6['Player'] == closest].iloc[0])
+                    break
+                elif answer == 'no':
+                    current_name = input("Re-enter player name: ").strip()
+                    break
+                elif answer == 'stop':
+                    exit()
+                else:
+                    print("Please type yes, no, or stop.")
+            if answer == 'yes':
+                break
+        else:
+            print(f"'{current_name}' not found and no close matches.")
+            current_name = input("Re-enter player name (or type 'stop'): ").strip()
+            if current_name.lower() == 'stop':
+                exit()
 
 if not players:
     print("No valid players found.")
@@ -96,3 +134,4 @@ names_str = ', '.join(row['Player'] for row in players)
 ax.set_title(f"{names_str} — 2022 Percentile Ranks", pad=15)
 plt.tight_layout()
 plt.show()
+
