@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project explores 74 years of NBA history (1950–2023) using a SQLite database built from four Kaggle datasets. Using SQL embedded in Python, I queried the database to investigate league-wide scoring trends, individual player performance, rookie history, and year-over-year improvement. Results are visualized using matplotlib and seaborn.
+This project explores 74 years of NBA history (1950–2023) using a SQLite database built from four Kaggle datasets. Using SQL embedded in Python, I queried the database to investigate league-wide scoring trends, individual player performance, rookie history, and year-over-year progression. Results are visualized using matplotlib and seaborn.
 
 **Dataset Source:** [NBA Players and Team Data — Kaggle](https://www.kaggle.com/datasets/loganlauton/nba-players-and-team-data?resource=download&select=NBA+Player+Stats%281950+-+2022%29.csv)  
 **Data sourced from:** Basketball Reference (player stats) · Hoops Hype (salaries & payroll)
