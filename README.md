@@ -18,13 +18,13 @@ All queries are written in SQLite and executed via `pd.read_sql_query()`. Key te
 | Technique | Where Used |
 |-----------|------------|
 | **Common Table Expressions (CTEs)** | Multi-step queries in analyses 3–9 — chains `clean_stats → player_avg → ranked output` |
-| **Window Functions** — `RANK() OVER (PARTITION BY ...)` | Rookie scoring leaders (analysis 6) — ranks rookies within each season |
-| **Window Functions** — `PERCENT_RANK() OVER (ORDER BY ...)` | Player comparison tool (analysis 7) — computes percentile rank for each stat |
-| **`CASE WHEN`** | Scoring tier classification (analysis 5) — buckets PPG into 5 tiers |
+| **Window Functions** — `RANK() OVER (PARTITION BY ...)` | Rookie scoring leaders — ranks rookies within each season |
+| **Window Functions** — `PERCENT_RANK() OVER (ORDER BY ...)` | Player comparison tool  — computes league-wide percentile rank for each stat |
+| **`CASE WHEN`** | Scoring tier classification — buckets PPG into 5 tiers |
 | **`NOT EXISTS` subquery** | TOT deduplication — removes duplicate rows for traded players |
 | **`UNION ALL`** | TOT deduplication — reconstructs a clean, deduplicated dataset |
-| **Multi-table `JOIN`** | Year-over-year improvement (analysis 9) — joins 2021 and 2022 seasons on player name |
-| **`HAVING`** | Consistent scorers (analysis 4) — filters groups with 5+ qualifying seasons |
+| **Multi-table `JOIN`** | Year-over-year improvement — joins 2021 and 2022 seasons on player name |
+| **`HAVING`** | Consistent scorers — filters groups with 5+ qualifying seasons |
 | **Computed columns** | Per-game stats calculated inline: `ROUND(PTS * 1.0 / G, 1) AS PPG` |
 
 **TOT Deduplication Pattern** — used in 6 of 8 analyses to handle players traded mid-season (who appear once per team plus a combined `TOT` row):
