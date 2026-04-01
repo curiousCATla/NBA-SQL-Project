@@ -24,7 +24,7 @@ All queries are written in SQLite and executed via `pd.read_sql_query()`. Key te
 | **`NOT EXISTS` subquery** | TOT deduplication — removes duplicate rows for traded players |
 | **`UNION ALL`** | TOT deduplication — reconstructs a clean, deduplicated dataset |
 | **Multi-table `JOIN`** | Year-over-year improvement — joins 2021 and 2022 seasons on player name |
-| **`HAVING`** | Consistent scorers — filters groups with 5+ qualifying seasons |
+| **`HAVING`** | Consistent scorers — filters players with 5+ qualifying seasons |
 | **Computed columns** | Per-game stats calculated inline: `ROUND(PTS * 1.0 / G, 1) AS PPG` |
 
 **TOT Deduplication Pattern** — used in 6 of 8 analyses to handle players traded mid-season (who appear once per team plus a combined `TOT` row):
