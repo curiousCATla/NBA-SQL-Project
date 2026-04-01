@@ -1,11 +1,17 @@
 # NBA-SQL-Project
 
-##Overview
+## Overview
 
-This project analyses an NBA database from Kaggle. The dataset includes almost all player stats for all NBA seasons until 2023, which were sourced from Basketball Reference, the team Payroll and player salary data were sourced from Hoops Hype.
+This project analyses an NBA database from Kaggle. The dataset includes almost all player stats for all NBA seasons until 2023, which were sourced from Basketball Reference, the team Payroll and player salary data were sourced from Hoops Hype. Using SQL, I explored league-wide trends, player performance, and trajectories to extract meaningful insights 
 
 Link: https://www.kaggle.com/datasets/loganlauton/nba-players-and-team-data?resource=download&select=NBA+Player+Stats%281950+-+2022%29.csv
 
+## Database Schema
+The loganlauton NBA database consist of four key components: 
+- `Payroll` - NBA team seasonal Salary Cap
+- `Box Score` - Performance stat line of players each game
+- `Player Stats` - Player's seasonal stats
+- `Salaries` - Player Salaries
 
 
 ## Key Questions & Findings
