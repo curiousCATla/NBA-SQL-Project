@@ -242,8 +242,7 @@ FROM league_2022;
 **Interactive features:**
 - Comma-separated input accepts multiple player names
 - `unicodedata.normalize()` maps accented names (e.g. `Dončić`) to plain ASCII input
-- `difflib.get_close_matches()` suggests the closest match on typos with a yes/no/stop prompt
-
+- `difflib.get_close_matches()` suggests the closest match on typos with a yes/no/stop prompt to simplify user interaction
 ![Player Comparison](images/2022_curry_vs_lebron.png)
 
 ---
