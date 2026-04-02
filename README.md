@@ -247,6 +247,27 @@ FROM league_2022;
 
 ---
 
+### Q8 · Who were the top 3 scorers on each team in the 2022 season?
+A CTE that isolates data from the 2022 season, partitions the player data based on teams, to assign rankings based on total points. 
+
+```sql
+WITH league_2022 AS (
+      SELECT
+          Player, Tm, G,PTS, 
+			RANK() OVER (PARTITION BY Tm ORDER BY PTS DESC) AS team_ranking
+      FROM player_stats                                                                                                                        
+      WHERE Season = 2022
+	  AND G>=1
+)
+SELECT
+	Tm, team_ranking,
+	Player, PTS, G 
+	FROM league_2022
+	WHERE team_ranking <= 3
+	ORDER BY Tm, team_ranking;
+
+```
+---
 ### Q9 · Most Improved Scorers from 2021 to 2022
 
 Three CTEs isolate each season's data, then a `JOIN` on player name links a player's 2021 and 2022 stats to compute the improvement delta.
