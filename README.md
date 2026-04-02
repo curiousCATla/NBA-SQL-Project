@@ -50,7 +50,7 @@ WITH clean_stats AS (
 | Technique | Library | Where Used |
 |-----------|---------|------------|
 | SQL → DataFrame bridge | `pandas.read_sql_query()` | All analysis scripts |
-| Label overlap prevention | `adjustText.adjust_text()` | Scatter plots with player name labels |
+| Label overlap prevention | `adjustText.adjust_text()` | Scatter plots with crowded player name labels |
 | Unicode normalization | `unicodedata.normalize('NFKD', ...)` | Player name input — handles accented names like "Dončić" → "doncic" |
 | Fuzzy string matching | `difflib.get_close_matches()` | Suggests closest player name on typo |
 | Polar/radar chart | `matplotlib` with `subplot_kw=dict(polar=True)` | Multi-player percentile comparison |
@@ -333,3 +333,8 @@ python player_prog.py
 - **Hot streak analysis** — Use the `player_boxscores` table to find the longest consecutive 20+ point games
 - **Team payroll vs. win rate** — Correlate team spending with win percentage across seasons
 - **Streamlit dashboard** — Deploy analyses as an interactive web app
+
+## What I Learned
+
+As my second SQL project, I've continued to build my foundation of using SQL to extract, analyze, and present data. Working with less refined datasets compared to the Chinook database conditioned me to problem-solving, reorganizing, and discharge undesirable data. An important takeaway was learning to identify characteristics of undersampled data and leverage SQL to logically distill the desired dataset. 
+This was my first attempt at embedding SQL in Python, using the pandas library to create database, and working with dataframes. I learned to align  data type and queries (comparison, trend, distribution, or composition) with the simplest, clearest visual format. From my own experience use testing my code, I learned to implement effective feedback loops that account for human errors, such as typos, and improve user experience. 
