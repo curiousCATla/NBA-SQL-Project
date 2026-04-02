@@ -77,20 +77,19 @@ The SQLite database (`nba.db`, ~137 MB) contains four tables:
 ```
 NBA_SQL/
 ├── README.md
-├── analysis.py
-├── load_data.py
+├── load_data.py # Loads CSV files into nba.db via pandas + sqlite3
 ├── queries.sql
-├── requirement.txt
+├── requirement.txt 
 └── visualization
     ├── analysis1.py
     ├── analysis2.py
     ├── analysis4.py
     ├── analysis5.py
     ├── analysis6.py
-    ├── analysis7.py
+    ├── analysis7.py # Q7: Interactive multi-player radar chart (2022 percentiles)
     ├── analysis9.py
     ├── anlaysis3.py
-    └── player_prog.py
+    └── player_prog.py # Interactive career progression tool (6-panel chart)
 ```
 
 ---
@@ -244,6 +243,8 @@ FROM league_2022;
 - Comma-separated input accepts multiple player names
 - `unicodedata.normalize()` maps accented names (e.g. `Dončić`) to plain ASCII input
 - `difflib.get_close_matches()` suggests the closest match on typos with a yes/no/stop prompt
+
+![Player Comparison](images/2022_curry_vs_lebron.png)
 
 ---
 
