@@ -88,7 +88,7 @@ NBA_SQL/
     ├── analysis6.py
     ├── analysis7.py # Q7: Interactive multi-player radar chart (2022 percentiles)
     ├── analysis9.py
-    ├── anlaysis3.py
+    ├── analysis3.py
     └── player_prog.py # Interactive career progression tool (6-panel chart)
 ```
 
@@ -104,7 +104,7 @@ pip install pandas matplotlib seaborn adjustText
 python load_data.py
 
 # Run any analysis (example)
-python analysis3.py
+python visualization/analysis3.py
 ```
 
 ---
@@ -336,5 +336,6 @@ python player_prog.py
 
 ## What I Learned
 
-As my second SQL project, I've continued to build my foundation of using SQL to extract, analyze, and present data. Working with less refined datasets compared to the Chinook database conditioned me to problem-solving, reorganizing, and discharge undesirable data. An important takeaway was learning to identify characteristics of undersampled data and leverage SQL to logically distill the desired dataset. 
-This was my first attempt at embedding SQL in Python, using the pandas library to create database, and working with dataframes. I learned to align  data type and queries (comparison, trend, distribution, or composition) with the simplest, clearest visual format. From my own experience use testing my code, I learned to implement effective feedback loops that account for human errors, such as typos, and improve user experience. 
+This is my second SQL project and my first time combining SQL with Python. Moving from a clean tutorial database to raw, real-world data meant confronting problems I had to solve independently — the most significant being that traded players appear multiple times per season. Recognizing that pattern and writing a `NOT EXISTS` deduplication CTE to resolve it was one of the more satisfying parts of the project, and it reinforced how important understanding your data's structure is before writing any analysis.
+
+Connecting SQL to Python via `pandas` made data visualization a natural next step. I learned to match the question being asked to the right chart format: bar charts for rankings, scatter plots for correlations and trends, pie charts for distributions. Building the interactive tools pushed me further — anticipating how a real user would interact with the input prompted me to research and implement Unicode normalization and fuzzy string matching, neither of which I had used before.
