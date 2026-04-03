@@ -6,10 +6,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import sqlite3
-from adjustText import adjust_text
 import numpy as np
-import unicodedata
-import difflib
+from utils import build_name_map, lookup_player
 conn = sqlite3.connect('nba.db')
 q6 = pd.read_sql_query("""
 
@@ -48,54 +46,17 @@ ORDER BY pts_percentile DESC;
 
 """,conn) # dataframe with player stats and their percentile ranks in points, assists, rebounds, steals, and blocks for the 2022 season.
 
-# the NBA has many international players, and some of the characters used in their names are not found on the English keyboard (e.g. Luka Dončić)
-# the normlize function is designed to overcome this challenge
-def normalize(name):
-    return unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii').lower()
-# unicodedata.normalize('NFKD') decomposes accented characters (e.g. č → c + accent mark)
-# .encode('ascii', 'ignore') drops the accent marks, .decode('ascii') converts back to a string
-# so "Dončić" → "doncic", allowing plain English keyboard input to match accented names
-
-name_map = {normalize(p): p for p in q6['Player']}  # maps normalized name → original name
+name_map = build_name_map(q6['Player'])
 
 raw_input = input("Enter player names (comma-separated): ").strip()
 player_names = [name.strip() for name in raw_input.split(',')]
 
 players = []
 for name in player_names:
-    current_name = name
-    # Outer loop: retries the full lookup whenever the user re-enters a name after typing 'no'.
-    # Breaks out only when a player is successfully matched and appended.
-    while True:
-        match = name_map.get(normalize(current_name))
-        if match:
-            players.append(q6[q6['Player'] == match].iloc[0])
-            break
-
-        suggestions = difflib.get_close_matches(normalize(current_name), name_map.keys(), n=1, cutoff=0.6)
-        if suggestions:
-            closest = name_map[suggestions[0]]
-            # Inner loop: retries only the yes/no prompt until a valid answer is given.
-            # Breaks out on 'yes' or 'no'; exits the script on 'stop'.
-            while True:
-                answer = input(f"'{current_name}' not found. Did you mean '{closest}'? (yes/no/stop): ").strip().lower()
-                if answer == 'yes':
-                    players.append(q6[q6['Player'] == closest].iloc[0])
-                    break
-                elif answer == 'no':
-                    current_name = input("Re-enter player name: ").strip()
-                    break
-                elif answer == 'stop':
-                    exit()
-                else:
-                    print("Please type yes, no, or stop.")
-            if answer == 'yes':
-                break
-        else:
-            print(f"'{current_name}' not found and no close matches.")
-            current_name = input("Re-enter player name (or type 'stop'): ").strip()
-            if current_name.lower() == 'stop':
-                exit()
+    canonical = lookup_player(name, name_map)
+    if canonical is None:
+        exit()
+    players.append(q6[q6['Player'] == canonical].iloc[0])
 
 if not players:
     print("No valid players found.")
@@ -133,4 +94,3 @@ names_str = ', '.join(row['Player'] for row in players)
 ax.set_title(f"{names_str} — 2022 Percentile Ranks", pad=15)
 plt.tight_layout()
 plt.show()
-

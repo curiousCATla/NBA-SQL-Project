@@ -2,8 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sqlite3
 import numpy as np
-import unicodedata
-import difflib
+from utils import build_name_map, lookup_player
 
 conn = sqlite3.connect('nba.db')
 
@@ -34,43 +33,11 @@ career_stats = pd.read_sql_query("""
     ORDER BY Player, Season
 """, conn)
 
-def normalize(name):
-    return unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii').lower()
-
-all_players = career_stats['Player'].unique()
-name_map = {normalize(p): p for p in all_players}
-
-def lookup_player(raw_name):
-    """Return the canonical player name, prompting on typos. Returns None if user stops."""
-    current_name = raw_name
-    while True:
-        match = name_map.get(normalize(current_name))
-        if match:
-            return match
-
-        suggestions = difflib.get_close_matches(normalize(current_name), name_map.keys(), n=1, cutoff=0.6)
-        if suggestions:
-            closest = name_map[suggestions[0]]
-            while True:
-                answer = input(f"'{current_name}' not found. Did you mean '{closest}'? (yes/no/stop): ").strip().lower()
-                if answer == 'yes':
-                    return closest
-                elif answer == 'no':
-                    current_name = input("Re-enter player name: ").strip()
-                    break
-                elif answer == 'stop':
-                    return None
-                else:
-                    print("Please type yes, no, or stop.")
-        else:
-            print(f"'{current_name}' not found and no close matches.")
-            current_name = input("Re-enter player name (or type 'stop'): ").strip()
-            if current_name.lower() == 'stop':
-                return None
+name_map = build_name_map(career_stats['Player'].unique())
 
 # --- Input loop ---
 player_name = input("Enter player name: ").strip()
-canonical = lookup_player(player_name)
+canonical = lookup_player(player_name, name_map)
 if not canonical:
     print("No player selected. Exiting.")
     exit()
