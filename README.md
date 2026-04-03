@@ -77,19 +77,22 @@ The SQLite database (`nba.db`, ~137 MB) contains four tables:
 ```
 NBA_SQL/
 ├── README.md
-├── load_data.py # Loads CSV files into nba.db via pandas + sqlite3
-├── queries.sql
-├── requirement.txt 
-└── visualization
-    ├── analysis1.py
-    ├── analysis2.py
-    ├── analysis4.py
-    ├── analysis5.py
-    ├── analysis6.py
-    ├── analysis7.py # Q7: Interactive multi-player radar chart (2022 percentiles)
-    ├── analysis9.py
-    ├── analysis3.py
-    └── player_prog.py # Interactive career progression tool (6-panel chart)
+├── requirements.txt          # Python dependencies
+├── load_data.py              # Loads all four CSVs into nba.db
+├── queries.sql               # Standalone SQL queries for reference
+├── data/                     # Source CSV files (not tracked in git)
+├── images/                   # Saved chart outputs
+└── visualization/
+    ├── utils.py              # Shared: normalize(), build_name_map(), lookup_player()
+    ├── analysis1.py          # Q1–Q2: Top scorers, PPG vs APG scatter
+    ├── analysis2.py          # Q3: League-wide PPG trend (1950–2023)
+    ├── analysis3.py          # Q4: Players with 5+ seasons of 20+ PPG
+    ├── analysis4.py          # Q5: Scoring tier distribution in 2022
+    ├── analysis5.py          # Q6: Rookie scoring leaders since 1953
+    ├── analysis6.py          # Q7: Interactive multi-player radar chart (2022 percentiles)
+    ├── analysis7.py          # Q8: Top 3 scorers per team in 2022
+    ├── analysis9.py          # Q9: Most improved scorers from 2021 to 2022
+    └── player_prog.py        # Interactive career progression tool (6-panel chart)
 ```
 
 ---
