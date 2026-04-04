@@ -303,4 +303,62 @@ WITH season_avgs AS (
   ORDER BY std_dev ASC
   LIMIT 15;
 
+--Q11: Find the scoring value per dollar spent (2021 season)
+
+WITH clean_stats AS (
+    -- Deduplicate traded players: keep the combined TOT row, drop individual team rows.
+    SELECT * FROM player_stats WHERE Tm = 'TOT'
+    UNION ALL
+    SELECT * FROM player_stats
+    WHERE NOT EXISTS (
+        SELECT 1 FROM player_stats p2
+        WHERE p2.Player = player_stats.Player
+          AND p2.Season = player_stats.Season
+          AND p2.Tm = 'TOT'
+    )
+),
+clean_salaries AS (
+    -- Two problems to fix in the source data:
+    -- 1. Salary is stored as a string like "$4,250,000" — strip symbols, cast to integer.
+    -- 2. Some players have duplicate rows with identical values — DISTINCT removes them.
+    SELECT DISTINCT
+        playerName,
+        seasonStartYear,
+        CAST(REPLACE(REPLACE(salary, ',', ''), '$', '') AS INTEGER) AS salary_int
+    FROM salaries
+),
+player_value AS (
+    SELECT
+        cs.Player,
+        cs.Tm,
+        cs.G,
+        ROUND(cs.PTS / cs.G, 1)                          AS PPG,
+        ROUND(sal.salary_int / 1000000.0, 2)                    AS salary_millions,
+        -- Core metric: points scored per $1M of salary.
+        -- Higher = more scoring value per dollar spent.
+        ROUND((cs.PTS * 1.0 / cs.G) / (sal.salary_int / 1000000.0), 2) AS ppg_per_million
+    FROM clean_stats cs
+    JOIN clean_salaries sal
+        ON cs.Player     = sal.playerName
+       AND cs.Season     = sal.seasonStartYear
+    -- G >= 41 = at least half a season played.
+    -- Filters out injury-shortened seasons where a small sample inflates the metric.
+    WHERE cs.Season = 2021
+      AND cs.G >= 41
+)
+SELECT Player, Tm, G, PPG, salary_millions, ppg_per_million
+FROM player_value
+ORDER BY ppg_per_million DESC
+limit 15;
+
+--Q12: Value-for-Money: Who are the most underpaid and overpaid players relative to their production?
+
+--Q13: Payroll Efficiency: Does spending more actually win more? (Team ROI on payroll)
+
+--Q14: Salary Curve by Age: When do players peak in pay vs. peak in performance? 
+
+--Q15: Injury/Availability Tax: How much do teams pay for players who don't play?
+
+--Q16: Position Premium: Which positions are systematically over/undervalued by the market?
+
 
