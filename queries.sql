@@ -353,6 +353,70 @@ limit 15;
 
 --Q12: Value-for-Money: Who are the most underpaid and overpaid players relative to their production?
 
+WITH clean_stats AS (
+    -- Deduplicate traded players: keep the combined TOT row, drop individual team rows.
+    SELECT * FROM player_stats WHERE Tm = 'TOT'
+    UNION ALL
+    SELECT * FROM player_stats
+    WHERE NOT EXISTS (
+        SELECT 1 FROM player_stats p2
+        WHERE p2.Player = player_stats.Player
+          AND p2.Season = player_stats.Season
+          AND p2.Tm = 'TOT'
+    )
+),
+clean_salaries AS (
+    -- Fix two source-data problems in one pass:
+    -- 1. Salary stored as "$4,250,000" — strip symbols, cast to integer.
+    -- 2. Duplicate rows with identical values — DISTINCT removes them.
+    -- Season filter applied here so downstream CTEs never see other years.
+    SELECT DISTINCT
+        playerName,
+        CAST(REPLACE(REPLACE(salary, ',', ''), '$', '') AS INTEGER) AS salary_int
+    FROM salaries
+    WHERE seasonStartYear = 2021
+),
+production AS (
+    -- Composite production score per game.
+    -- Covers all major positive contributions and subtracts turnovers.
+    -- G >= 41 = at least half a season, avoids small-sample distortion.
+    SELECT
+        cs.Player,
+        cs.Tm,
+        cs.G,
+        ROUND((cs.PTS + cs.TRB + cs.AST + cs.STL + cs.BLK - cs.TOV) / cs.G, 2) AS prod_per_game
+    FROM clean_stats cs
+    WHERE cs.Season = 2021
+      AND cs.G >= 41
+),
+joined AS (
+    SELECT
+        p.Player,
+        p.Tm,
+        p.G,
+        p.prod_per_game,
+        ROUND(s.salary_int / 1000000.0, 2)                           AS salary_millions,
+        -- Cost per production unit: lower = more value per dollar (underpaid).
+        ROUND(s.salary_int / 1000000.0 / p.prod_per_game, 2)        AS cost_per_unit
+    FROM production p
+    JOIN clean_salaries s ON p.Player = s.playerName
+    -- Exclude minimum-salary noise: very low salaries inflate the metric
+    -- for players who happen to be cheap regardless of performance.
+    WHERE s.salary_int > 1000000
+      AND p.prod_per_game > 0
+)
+SELECT
+    Player,
+    Tm,
+    G,
+    prod_per_game,
+    salary_millions,
+    cost_per_unit,
+    RANK() OVER (ORDER BY cost_per_unit ASC)  AS underpaid_rank,
+    RANK() OVER (ORDER BY cost_per_unit DESC) AS overpaid_rank
+FROM joined
+ORDER BY cost_per_unit ASC;
+
 --Q13: Payroll Efficiency: Does spending more actually win more? (Team ROI on payroll)
 
 --Q14: Salary Curve by Age: When do players peak in pay vs. peak in performance? 
