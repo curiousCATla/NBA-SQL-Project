@@ -417,12 +417,12 @@ SELECT
 FROM joined
 ORDER BY cost_per_unit ASC;
 
---Q13: Payroll Efficiency: Does spending more actually win more? (Team ROI on payroll)
+--Q13: Position Premium: Which positions are systematically over/undervalued by the market?
 
 --Q14: Salary Curve by Age: When do players peak in pay vs. peak in performance? 
 
 --Q15: Injury/Availability Tax: How much do teams pay for players who don't play?
 
---Q16: Position Premium: Which positions are systematically over/undervalued by the market?
+--Q16: Payroll Efficiency: Does spending more actually win more? (Team ROI on payroll)
 
 
