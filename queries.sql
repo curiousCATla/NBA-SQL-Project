@@ -478,6 +478,78 @@ ORDER BY position_premium DESC;
 
 --Q14: Salary Curve by Age: When do players peak in pay vs. peak in performance? 
 
+WITH clean_stats AS (
+    -- Deduplicate traded players: keep the combined TOT row, drop individual team rows.
+    -- The TOT row aggregates stats across all teams a player played for that season,
+    -- so it correctly represents their full-season production.
+    SELECT * FROM player_stats WHERE Tm = 'TOT'
+    UNION ALL
+    SELECT * FROM player_stats
+    WHERE NOT EXISTS (
+        SELECT 1 FROM player_stats p2
+        WHERE p2.Player = player_stats.Player
+          AND p2.Season = player_stats.Season
+          AND p2.Tm = 'TOT'
+    )
+),
+clean_salaries AS (
+    -- Strip "$" and "," from salary text, cast to integer, deduplicate.
+    -- No season filter here — we keep all years (1990–2021) so the age
+    -- aggregation in per_player covers the full salary history.
+    SELECT DISTINCT
+        playerName,
+        seasonStartYear,
+        CAST(REPLACE(REPLACE(salary, ',', ''), '$', '') AS INTEGER) AS salary_int
+    FROM salaries
+),
+per_player AS (
+    -- How clean_stats and clean_salaries are joined:
+    --
+    --   clean_stats  has one row per (Player, Season)  after deduplication.
+    --   clean_salaries has one row per (playerName, seasonStartYear) after DISTINCT.
+    --   We join on BOTH columns:
+    --       cs.Player = s.playerName        — same person
+    --       cs.Season = s.seasonStartYear   — same season
+    --   Joining on player name alone would be wrong: a player's 2015 salary
+    --   could attach to their 2021 stats row, inflating or deflating the age
+    --   averages. The season key ensures each salary is matched to the exact
+    --   season the stats were recorded in.
+    SELECT
+        cs.Age,
+        (cs.PTS + cs.TRB + cs.AST + cs.STL + cs.BLK - cs.TOV) / cs.G AS prod_per_game,
+        s.salary_int / 1000000.0                                        AS salary_millions
+    FROM clean_stats cs
+    JOIN clean_salaries s
+        ON  cs.Player = s.playerName
+        AND cs.Season = s.seasonStartYear
+    WHERE cs.G           >= 20
+      AND s.salary_int   >  1000000
+      AND (cs.PTS + cs.TRB + cs.AST + cs.STL + cs.BLK - cs.TOV) / cs.G > 0
+),
+age_avgs AS (
+    SELECT
+        Age,
+        COUNT(*)             AS num_players,
+        AVG(prod_per_game)   AS avg_prod,
+        AVG(salary_millions) AS avg_salary
+    FROM per_player
+    GROUP BY Age
+)
+SELECT
+    Age,
+    num_players,
+    ROUND(avg_prod,   2) AS avg_prod,
+    ROUND(avg_salary, 2) AS avg_salary_millions,
+    -- Index both metrics to their own peak so they share the same 0-100 scale.
+    -- 100 = the age at which this metric is highest; other ages are a % of that peak.
+    -- This makes it possible to overlay production and salary on one axis and
+    -- directly compare *when* each peaks, regardless of their different units.
+    ROUND(avg_prod   / MAX(avg_prod)   OVER () * 100, 1) AS prod_index,
+    ROUND(avg_salary / MAX(avg_salary) OVER () * 100, 1) AS salary_index
+FROM age_avgs
+WHERE Age BETWEEN 19 AND 38
+ORDER BY Age;
+
 --Q15: Injury/Availability Tax: How much do teams pay for players who don't play?
 
 --Q16: Payroll Efficiency: Does spending more actually win more? (Team ROI on payroll)
