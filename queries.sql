@@ -419,6 +419,63 @@ ORDER BY cost_per_unit ASC;
 
 --Q13: Position Premium: Which positions are systematically over/undervalued by the market?
 
+WITH clean_stats AS (
+    -- Deduplicate traded players: keep the combined TOT row, drop individual team rows.
+    SELECT * FROM player_stats WHERE Tm = 'TOT'
+    UNION ALL
+    SELECT * FROM player_stats
+    WHERE NOT EXISTS (
+        SELECT 1 FROM player_stats p2
+        WHERE p2.Player = player_stats.Player
+          AND p2.Season = player_stats.Season
+          AND p2.Tm = 'TOT'
+    )
+),
+clean_salaries AS (
+    -- Strip "$" and "," from salary text, cast to integer, deduplicate, filter to 2021.
+    SELECT DISTINCT
+        playerName,
+        CAST(REPLACE(REPLACE(salary, ',', ''), '$', '') AS INTEGER) AS salary_int
+    FROM salaries
+    WHERE seasonStartYear = 2021
+),
+per_player AS (
+    SELECT
+        -- Extract primary position: "SF-PF" -> "SF", "C-PF" -> "C", etc.
+        SUBSTR(cs.Pos, 1, INSTR(cs.Pos || '-', '-') - 1)              AS position,
+        (cs.PTS + cs.TRB + cs.AST + cs.STL + cs.BLK - cs.TOV) / cs.G AS prod_per_game,
+        s.salary_int / 1000000.0                                       AS salary_millions
+    FROM clean_stats cs
+    JOIN clean_salaries s ON cs.Player = s.playerName
+    WHERE cs.Season      = 2021
+      AND cs.G           >= 41
+      AND s.salary_int   > 1000000
+      AND (cs.PTS + cs.TRB + cs.AST + cs.STL + cs.BLK - cs.TOV) / cs.G > 0
+),
+position_avgs AS (
+    SELECT
+        position,
+        COUNT(*)             AS num_players,
+        AVG(prod_per_game)   AS avg_prod,
+        AVG(salary_millions) AS avg_salary
+    FROM per_player
+    GROUP BY position
+)
+SELECT
+    position,
+    num_players,
+    ROUND(avg_prod,   2) AS avg_prod,
+    ROUND(avg_salary, 2) AS avg_salary_millions,
+    -- premium = (this position's share of total salary)
+    --         / (this position's share of total production)
+    -- Window functions compute grand totals in one pass — no subquery needed.
+    ROUND(
+        (avg_salary / SUM(avg_salary) OVER ()) /
+        (avg_prod   / SUM(avg_prod)   OVER ()),
+    2) AS position_premium
+FROM position_avgs
+ORDER BY position_premium DESC;
+
 --Q14: Salary Curve by Age: When do players peak in pay vs. peak in performance? 
 
 --Q15: Injury/Availability Tax: How much do teams pay for players who don't play?
