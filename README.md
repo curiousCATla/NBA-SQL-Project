@@ -530,18 +530,32 @@ python player_prog.py
 - League-wide scoring has returned to 1960s levels after a defensive valley spanning roughly 1994–2010.
 - The **modern three-point era** has produced some of the highest-scoring rookie classes since the 1960s.
 - Fewer than 15 players in the dataset have ever averaged 20+ PPG in 5 or more seasons.
+- A **PPG-per-dollar** metric systematically undervalues non-scorers — defenders and playmakers like Draymond Green and Rudy Gobert appear expensive, but their real value lies outside the scoring column.
+- A **composite production score** (points + rebounds + assists + steals + blocks − turnovers) identified Jalen Brunson and Naz Reid as severely undervalued in 2021 — both have since grown into key rotation or franchise-level players.
+- **Point guards** carry the highest position premium in the market; **shooting guards** are the most underpaid relative to their production share, likely because teams carry more guards, which dilutes position-wide salary averages.
+- **Production peaks before pay** — players tend to perform best in their mid-to-late 20s, but maximum salary typically arrives two to three years later, reflecting the lag between performance and the next contract cycle.
+- The **1998–99 availability anomaly** has two separate causes: NBA expansion through the mid-1990s inflated the player pool, while the labor lockout compressed that season to 50 games — mechanically capping every player's availability rate regardless of health.
 
 ---
 
 ## Potential Extensions
 
-- **Salary efficiency** — JOIN `player_stats` with `salaries` to rank players by PPG per $1M
 - **Hot streak analysis** — Use the `player_boxscores` table to find the longest consecutive 20+ point games
 - **Team payroll vs. win rate** — Correlate team spending with win percentage across seasons
 - **Streamlit dashboard** — Deploy analyses as an interactive web app
+- **Defense-adjusted salary efficiency** — Add defensive stats (BLK, STL, defensive rating) to the PPG-per-dollar metric so that non-scorers like Gobert and Draymond are valued fairly
+- **Breakout player tracker** — Check how players flagged as "undervalued" by the composite score in year N perform in years N+1 and N+2; test whether the metric predicts development
+- **Position salary trends over time** — Track how each position's market premium has shifted decade by decade as the game has evolved (e.g. the rise of the 3-and-D wing, the decline of the traditional center)
+- **Contract value model** — Use production score and age to estimate expected salary, then flag players who are priced significantly above or below their performance curve
+- **Availability by position and age** — Break down the availability tax analysis by position and age group to see whether certain roles or career stages carry higher injury risk
+
 
 ## What I Learned
 
 This is my second SQL project and my first time combining SQL with Python. Moving from a clean tutorial database to raw, real-world data meant confronting problems I had to solve independently — the most significant being that traded players appear multiple times per season. Recognizing that pattern and writing a `NOT EXISTS` deduplication CTE to resolve it was one of the more satisfying parts of the project, and it reinforced how important understanding your data's structure is before writing any analysis.
 
 Connecting SQL to Python via `pandas` made data visualization a natural next step. I learned to match the question being asked to the right chart format: bar charts for rankings, scatter plots for correlations and trends, pie charts for distributions. Building the interactive tools pushed me further — anticipating how a real user would interact with the input prompted me to research and implement Unicode normalization and fuzzy string matching, neither of which I had used before.
+
+The salary analyses pushed me into different territory. Designing metrics like PPG-per-dollar and a composite production score meant making deliberate choices about what to include and exclude — and then thinking critically about where those metrics break down. A defender like Draymond Green looks expensive by a scoring-only measure, but that's a flaw in the metric, not the player. I found that stress-testing my own analysis was just as important as building it.
+
+It also changed how I thought about comparisons across time. A fixed `$5M` salary filter means something very different in 1995 than in 2020, so I replaced it with a `PERCENT_RANK()` window function partitioned by season — keeping only players above the median salary for their own era. That felt like a more honest question to ask. Similarly, investigating the 1998–99 anomaly in the availability data taught me to separate data artifacts from real signal: the dip wasn't an injury trend, it was the lockout mechanically capping every player's game total at around 50. Without that historical context, it would have been easy to draw the wrong conclusion.
