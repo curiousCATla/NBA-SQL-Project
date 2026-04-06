@@ -1,6 +1,14 @@
-# 7. Player Comparison Tool
-# This script allows users to input player names and generates a radar chart comparing their percentile ranks in key stats for the 2022 season. 
-# The input is a comma-separated list of player names, and the output is a radar chart visualizing how each player ranks in points, assists, rebounds, steals, and blocks compared to their peers in the 2022 season.
+"""
+analysis7.py — Interactive multi-player percentile comparison (2022 season).
+
+Accepts a comma-separated list of player names and renders a radar chart
+showing each player's percentile rank in points, assists, rebounds,
+steals, and blocks relative to all qualified 2022 players.
+
+Supports accented names (e.g. Dončić) and tolerates typos via fuzzy matching.
+Output: displayed interactively (not saved to file)
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns

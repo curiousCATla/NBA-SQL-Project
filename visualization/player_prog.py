@@ -1,3 +1,14 @@
+"""
+player_prog.py — Interactive career progression viewer.
+
+Prompts for a player name and plots their per-game stats
+(points, assists, rebounds, steals, blocks, games played)
+across every season in the database, in a 2x3 subplot grid.
+
+Supports accented names and tolerates typos via fuzzy matching.
+Output: displayed interactively (not saved to file)
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import sqlite3

@@ -1,3 +1,12 @@
+"""
+analysis6.py — Highest-scoring rookie each season since 1953.
+
+Identifies each player's debut season, then ranks rookies within
+each year by PPG to find the top scorer. The 1953 cutoff reflects
+when the league's rookie tracking becomes statistically consistent.
+
+Output: images/rook_ppg_by_season.png
+"""
 
 import sqlite3
 import pandas as pd
@@ -9,6 +18,7 @@ from adjustText import adjust_text
 conn = sqlite3.connect('nba.db')
 q6 = pd.read_sql_query("""
 WITH clean_stats AS (
+      -- Keep TOT rows for traded players; discard their individual team rows.
       SELECT * FROM player_stats WHERE Tm = 'TOT'
       UNION ALL
       SELECT * FROM player_stats
@@ -20,25 +30,27 @@ WITH clean_stats AS (
       )
   ),
   rookie_year AS (
+      -- Each player's earliest season in the dataset is treated as their rookie year.
       SELECT Player, MIN(Season) AS rookie_season
       FROM player_stats
       GROUP BY Player
-	  --By only considering 2 columns, it makes the SQL more efficient
   ),
   rookie_stats AS (
+      -- Join on both player name and season to isolate only the rookie-year row.
+      -- G >= 20 excludes players with too few games for a meaningful average.
       SELECT cs.Player, cs.Season, cs.Tm, cs.G,
-             ROUND(cs.PTS  / cs.G, 2) AS PPG
+             ROUND(cs.PTS / cs.G, 2) AS PPG
       FROM clean_stats cs
       JOIN rookie_year ry
           ON cs.Player = ry.Player
          AND cs.Season = ry.rookie_season
-	  --Using 2 distinct parameters for JOIN to find the player's rookie stats
       WHERE cs.G >= 20
   ),
   ranked_rookies AS (
+      -- PARTITION BY Season means rankings reset for each year,
+      -- so rank 1 is the top rookie scorer within that specific season.
       SELECT *,
              RANK() OVER (PARTITION BY Season ORDER BY PPG DESC) AS ppg_rank
-	  --Using a partition to compare each player's rookie season, and finding the rookie with the highest points per game. 
       FROM rookie_stats
   )
   SELECT Player, Season, Tm, G, PPG
@@ -46,7 +58,7 @@ WITH clean_stats AS (
   WHERE ppg_rank = 1
     AND Season >= 1953
   ORDER BY Season;
-""" , conn)
+""", conn)
 fig, ax = plt.subplots(figsize=(12, 5))
 sns.scatterplot(
     data=q6,
@@ -59,5 +71,5 @@ ax.set_xlabel('Season(year)', fontsize=12)
 ax.set_ylabel('Average Points Per Game', fontsize=12)
 
 plt.tight_layout()
-plt.savefig('images/highest_rookie_ppg_by_season.png', dpi=150, bbox_inches='tight')
+plt.savefig('images/rook_ppg_by_season.png', dpi=150, bbox_inches='tight')
 plt.show()

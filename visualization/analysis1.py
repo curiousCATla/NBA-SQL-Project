@@ -1,3 +1,12 @@
+"""
+analysis1.py — Top single-season scorers and elite scorer comparison.
+
+Q1: Bar chart of the 10 highest single-season PPG averages of all time.
+Q2: Scatter plot of players who averaged 25+ PPG and 7+ APG in the same season.
+
+Output: images/top_10_scorers.png, images/ppg_vs_apg_scatter.png
+"""
+
 import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,8 +24,10 @@ SELECT
 FROM player_stats
 ORDER BY PTS DESC
 LIMIT 10;
-""", conn) #inputting the SQL query as a string, and the connection object to the database. The result is stored in a pandas DataFrame called q1.
-# Combine Player + Season into one label for the y-axis because players like Wilt have multiple entries on this list from different seasons 
+""", conn)
+
+# Player + Season combined into one label because the same player (e.g. Wilt)
+# can appear multiple times across different seasons.
 q1['Player_Season'] = q1['Player'] + ' (' + q1['Season'].astype(str) + ')'
 
 fig, ax = plt.subplots(figsize=(10, 6))
