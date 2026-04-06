@@ -20,11 +20,16 @@ All queries are written in SQLite and executed via `pd.read_sql_query()`. Key te
 | **Common Table Expressions (CTEs)** | Multi-step queries in analyses 3–9 — chains `clean_stats → player_avg → ranked output` |
 | **Window Functions** — `RANK() OVER (PARTITION BY ...)` | Rookie scoring leaders — ranks rookies within each season |
 | **Window Functions** — `PERCENT_RANK() OVER (ORDER BY ...)` | Player comparison tool  — computes league-wide percentile rank for each stat |
+| **Window Functions** — `PERCENT_RANK() OVER (PARTITION BY season ...)` | Availability tax — ranks each player's salary within their own season to filter by relative standing rather than a fixed dollar threshold |
+| **Window Functions** — `MAX() OVER ()` | Salary curve by age — indexes production and salary to their own peak in a single pass, no subquery needed |
+| **`SUBSTR` + `INSTR`** | Position premium — extracts primary position from compound strings like `"SF-PF"` |
 | **`CASE WHEN`** | Scoring tier classification — buckets PPG into 5 tiers |
 | **`NOT EXISTS` subquery** | TOT deduplication — removes duplicate rows for traded players |
 | **`UNION ALL`** | TOT deduplication — reconstructs a clean, deduplicated dataset |
 | **Multi-table `JOIN`** | Year-over-year improvement — joins 2021 and 2022 seasons on player name |
 | **`HAVING`** | Consistent scorers — filters players with 5+ qualifying seasons |
+| **Manual `STDDEV`** — `SQRT(AVG((x - mean)²))` | Scoring consistency — SQLite lacks a native `STDDEV()`, so population standard deviation is computed inline across game-level rows |
+| **Cross-table `JOIN`** on player + team + season | Consistency query — joins `player_boxscores` to `player_stats` on three keys to prevent traded players' box scores from mixing across team stints |
 | **Computed columns** | Per-game stats calculated inline: `ROUND(PTS * 1.0 / G, 1) AS PPG` |
 
 **TOT Deduplication Pattern** — used in 6 of 8 analyses to handle players traded mid-season (who appear once per team plus a combined `TOT` row):
@@ -92,6 +97,13 @@ NBA_SQL/
     ├── analysis6.py          # Q7: Interactive multi-player radar chart (2022 percentiles)
     ├── analysis7.py          # Q8: Top 3 scorers per team in 2022
     ├── analysis9.py          # Q9: Most improved scorers from 2021 to 2022
+    ├── analysis10.py         # Q10: Most consistent scorers in 2022 (game-level std dev)
+    ├── analysis11.py         # Q11: Salary efficiency — PPG per $1M (2021)
+    ├── analysis12.py         # Q12: Most underpaid and overpaid players by composite production (2021)
+    ├── analysis13.py         # Q13: Position premium — salary share vs production share (2021)
+    ├── analysis14.py         # Q14: Salary curve by age — when do players peak in pay vs performance?
+    ├── analysis15.py         # Q15: Injury/Availability Tax — salary paid for missed games
+    ├── analysis15b.py        # Q15b: Same analysis using inflation-adjusted salaries
     └── player_prog.py        # Interactive career progression tool (6-panel chart)
 ```
 
@@ -301,6 +313,197 @@ WITH season_2021 AS (SELECT Player, ROUND(PTS * 1.0 / G, 1) AS PPG_2021 FROM cle
                      FROM season_2022 s22 JOIN season_2021 s21 ON s22.Player = s21.Player)
 SELECT * FROM combined ORDER BY improvement DESC LIMIT 10;
 ```
+
+---
+
+### Q10 · Most Consistent Scorers in 2022
+
+Uses both `player_stats` and `player_boxscores` to compute scoring standard deviation at the game level. A low std_dev against a high avg_ppg signals a player who reliably delivers their scoring output every night, rather than alternating between big games and quiet ones.
+
+```sql
+WITH season_avgs AS (
+    SELECT Player, Tm, G, ROUND(PTS * 1.0 / G, 1) AS avg_ppg
+    FROM player_stats
+    WHERE Season = 2022 AND G >= 40 AND Tm != 'TOT'
+),
+consistency AS (
+    SELECT pb.PLAYER_NAME, pb.Team, sa.G AS games_played, sa.avg_ppg,
+        ROUND(SQRT(AVG((pb.PTS - sa.avg_ppg) * (pb.PTS - sa.avg_ppg))), 1) AS std_dev
+    FROM player_boxscores pb
+    JOIN season_avgs sa
+        ON  pb.PLAYER_NAME = sa.Player
+        AND pb.Team        = sa.Tm
+        AND pb.Season      = 2022
+    GROUP BY pb.PLAYER_NAME, pb.Team, sa.avg_ppg, sa.G
+)
+SELECT PLAYER_NAME, Team, games_played, avg_ppg, std_dev
+FROM consistency
+WHERE avg_ppg >= 15
+ORDER BY std_dev ASC LIMIT 15;
+```
+
+Standard deviation is calculated manually using `SQRT(AVG((game_pts - season_avg)²))` — SQLite has no built-in `STDDEV()` function. Joining on both player name **and** team is essential: a traded player would otherwise pick up box score rows from multiple teams, mixing stats from different stints under a single average.
+
+| Player | Team | Games | Avg PPG | Std Dev |
+|---|---|---|---|---|
+| Jalen Brunson | DAL | 79 | 16.3 | 5.0 |
+| Rudy Gobert | UTA | 66 | 15.6 | 5.2 |
+| Wendell Carter Jr. | ORL | 62 | 15.0 | 5.3 |
+| Evan Mobley | CLE | 69 | 15.0 | 5.5 |
+| Andrew Wiggins | GSW | 73 | 17.2 | 5.6 |
+| Jarrett Allen | CLE | 56 | 16.1 | 5.8 |
+| Cole Anthony | ORL | 65 | 16.3 | 6.1 |
+| Dejounte Murray | SAS | 68 | 21.1 | 6.2 |
+| Jaren Jackson Jr. | MEM | 78 | 16.3 | 6.3 |
+| Tobias Harris | PHI | 73 | 17.2 | 6.3 |
+| Norman Powell | POR | 40 | 18.6 | 6.4 |
+| Bam Adebayo | MIA | 56 | 19.1 | 6.5 |
+| Scottie Barnes | TOR | 74 | 15.3 | 6.5 |
+| Seth Curry | PHI | 45 | 15.0 | 6.5 |
+| Russell Westbrook | LAL | 78 | 18.5 | 6.7 |
+
+**Finding:** Jalen Brunson leads all 15+ PPG scorers in consistency, posting the lowest std_dev of 5.0 across 79 games. Notably, several of the most consistent scorers here — Brunson, Mobley, Wiggins, Barnes — were all in the early stages of becoming primary offensive options, suggesting that players who haven't yet reached star-level usage tend to produce more predictably within defined roles.
+
+---
+
+### Q11 · Salary Efficiency — Scoring Value per Dollar Spent (2021)
+
+Joins `player_stats` with `salaries` to compute PPG per $1M of salary, identifying which players deliver the most scoring value relative to their contract. Players with fewer than 41 games played are excluded to avoid small-sample inflation.
+
+```sql
+SELECT Player, Tm, G, PPG, salary_millions,
+    ROUND((cs.PTS * 1.0 / cs.G) / (sal.salary_int / 1000000.0), 2) AS ppg_per_million
+FROM player_value
+ORDER BY ppg_per_million DESC;
+```
+
+The scatter plot colours each point on a `RdYlGn` scale — green = high value per dollar, red = low. Only the top 10 and bottom 5 by efficiency are labelled; `adjustText` prevents overlap.
+
+![Salary Efficiency 2021](images/salary_efficiency_2021.png)
+
+**Finding:** High-profile defenders and playmakers — Rudy Gobert, Steven Adams, Draymond Green — rank among the most expensive players by PPG cost, but their value lies primarily outside scoring. This metric systematically undervalues players whose contributions show up in defense, rebounding, and facilitating rather than the scoring column.
+
+---
+
+### Q12 · Most Underpaid and Overpaid Players by Composite Production (2021)
+
+Replaces PPG with a composite production score — `(PTS + TRB + AST + STL + BLK − TOV) / G` — and computes cost per production unit. Players at minimum salary are excluded since artificially low salaries would inflate the metric regardless of performance.
+
+```sql
+ROUND(s.salary_int / 1000000.0 / p.prod_per_game, 2) AS cost_per_unit,
+RANK() OVER (ORDER BY cost_per_unit ASC)  AS underpaid_rank,
+RANK() OVER (ORDER BY cost_per_unit DESC) AS overpaid_rank
+```
+
+The top 10 underpaid and top 5 overpaid players are labelled on the scatter. The `RdYlGn_r` colourmap is reversed so green = cheap (good value) and red = expensive (poor value).
+The top 10 mot
+
+![Value for Money 2021](images/value_for_money_2021.png)
+
+**Finding:** The composite metric appears to track player development well. Jalen Brunson was among the most undervalued players in 2021 by this measure and has since emerged as the franchise player of the New York Knicks. Naz Reid is another example — a high-production, low-cost contributor at the time who has since grown into a key rotation piece.
+
+---
+
+### Q13 · Position Premium — Which Positions Does the Market Over/Underpay? (2021)
+
+Computes each position's share of total salary and total production, then derives a premium ratio. A value above 1.0 means the market pays that position a larger salary share than its production share warrants.
+
+```sql
+ROUND(
+    (avg_salary / SUM(avg_salary) OVER ()) /
+    (avg_prod   / SUM(avg_prod)   OVER ()),
+2) AS position_premium
+```
+
+`SUM() OVER ()` computes the league-wide total in a single pass — no subquery or self-join needed. Primary position is extracted from mixed positions like `"SF-PF"` using `SUBSTR(Pos, 1, INSTR(Pos || '-', '-') - 1)`.
+
+![Position Premium 2021](images/position_premium_2021.png)
+
+**Finding:** Shooting guards are the most underpaid position relative to their production share, though this likely reflects roster depth — teams carry more guards, diluting average salary. Point guards are the most overpaid by this measure, but the metric undersells their true value: as primary ball-handlers and playmakers, their impact is disproportionately captured in assists and decision-making rather than the composite production score. The star-player premium also concentrates at this position, inflating the average.
+
+---
+
+### Q14 · Salary Curve by Age — When Do Players Peak in Pay vs Performance?
+
+Aggregates all seasons with salary data (1990–2021) and computes average production score and average salary at each age. Both curves are then indexed to their own peak (100 = peak age) so they can be overlaid on the same axis despite having different units.
+
+```sql
+ROUND(avg_prod   / MAX(avg_prod)   OVER () * 100, 1) AS prod_index,
+ROUND(avg_salary / MAX(avg_salary) OVER () * 100, 1) AS salary_index
+```
+
+The chart shades the gap between the production peak and the salary peak, visualising the lag between when players perform best and when the market pays them most. This lag reflects how contracts are typically signed based on past performance.
+
+![Salary Curve by Age](images/salary_curve_by_age.png)
+
+**Finding:** Production peaks earlier than pay — players tend to be at their best on-court in their mid-to-late 20s, but maximum salary often arrives two to three years later. Since NBA contracts typically run no longer than four years, this gap reflects the inherent delay between demonstrated performance and the next contract negotiation cycle.
+
+---
+
+### Q15 · Injury / Availability Tax — How Much Do Teams Pay for Players Who Don't Play?
+
+Two queries drive three panels: the top 10 player-seasons by salary wasted on missed games, an availability-vs-salary scatter, and a league-wide trend of average availability rate and qualifying player count over time.
+
+**Query 1 — per-player salary wasted:**
+
+```sql
+WITH clean_stats AS ( ... ),   -- TOT deduplication
+clean_salaries AS (
+    SELECT DISTINCT playerName, seasonStartYear,
+        CAST(REPLACE(REPLACE(salary, ',', ''), '$', '') AS INTEGER) AS salary_int
+    FROM salaries
+),
+per_player AS (
+    SELECT cs.Player, cs.Season, cs.G,
+        ROUND(cs.G * 1.0 / 82, 3)                             AS availability_rate,
+        ROUND(s.salary_int / 1000000.0, 2)                    AS salary_millions,
+        -- salary * (1 - G/82) = cost of missed game slots
+        ROUND(s.salary_int / 1000000.0 * (1.0 - cs.G / 82.0), 2) AS salary_wasted_m
+    FROM clean_stats cs
+    JOIN clean_salaries s ON cs.Player = s.playerName AND cs.Season = s.seasonStartYear
+    WHERE s.salary_int > 5000000 AND cs.G < 82
+)
+SELECT * FROM per_player ORDER BY salary_wasted_m DESC;
+```
+
+**Query 2 — league-wide availability by season (relative salary filter):**
+
+A fixed dollar threshold like `salary > $5M` distorts comparisons across eras — the same nominal amount represents a far larger share of the salary cap in 1995 than in 2020. Instead, `PERCENT_RANK()` partitioned by season ranks each player's salary within their own year, and the filter keeps only those above the median. This ensures a consistent "above-average earner" definition regardless of the league's economic scale.
+
+```sql
+WITH ...,
+salary_pct AS (
+    SELECT playerName, seasonStartYear, salary_int,
+        PERCENT_RANK() OVER (
+            PARTITION BY seasonStartYear
+            ORDER BY salary_int
+        ) AS salary_percentile
+    FROM clean_salaries
+)
+SELECT cs.Season, COUNT(*) AS num_players, ROUND(AVG(cs.G * 1.0 / 82), 3) AS avg_availability
+FROM clean_stats cs
+JOIN salary_pct s ON cs.Player = s.playerName AND cs.Season = s.seasonStartYear
+WHERE s.salary_percentile >= 0.5   -- above median salary for that season
+GROUP BY cs.Season ORDER BY cs.Season;
+```
+
+![Availability Tax](images/availability_tax.png)
+
+**Finding:** The chart reveals two simultaneous anomalies around 1998–99: a sharp spike in qualifying player count and a steep dip in average availability rate. These have distinct causes that collide at the same moment in NBA history.
+
+The **player count spike** traces to league expansion. Between 1988 and 1995, the NBA added six franchises — the Heat, Hornets, Timberwolves, Magic, Raptors, and Grizzlies — growing from 23 to 29 teams. Each new franchise added roughly 12–15 roster spots, steadily expanding the pool of salaried players captured in the data. By the late 1990s this cumulative growth peaks, producing the visible surge in the orange line.
+
+The **availability rate dip** is a direct artifact of the 1998–99 labor lockout. The collective bargaining dispute shortened that season to just 50 games. Since availability is measured as `G / 82`, even a player who appeared in every single game that year registers only a ~0.61 rate — a hard ceiling imposed by the compressed schedule, not by injury. This mechanically drags the league-wide average down in a single season, creating the sharp trough in the blue line.
+
+The two effects are not contradictory: expansion inflated the player count through the mid-to-late 1990s, while the lockout compressed everyone's availability in the same window. The two lines are responding to entirely different forces that happened to converge at the same point in time.
+
+---
+
+### Q15b · Injury / Availability Tax — Inflation-Adjusted
+
+Identical structure to Q15 but uses `inflationAdjSalary` (all values expressed in 2021 dollars) instead of nominal salary. This makes the salary wasted figures directly comparable across eras — a $20M loss in 1999 and a $20M loss in 2019 carry the same real-dollar weight.
+
+![Availability Tax (Inflation-Adjusted)](images/availability_tax_inflation_adj.png)
 
 ---
 
