@@ -145,7 +145,7 @@ python visualization/analysis3.py
 
 ## Analyses
 
-| # | Question | Key SQL Technique |
+| # | Query | Key SQL Technique |
 |---|----------|-------------------|
 | Q1 | Top 10 single-season scorers of all time | `ORDER BY`, `LIMIT` |
 | Q2 | Players averaging 25+ PPG and 7+ APG | Computed columns, inline filter |
@@ -240,6 +240,7 @@ ORDER BY seasons_above_20 DESC;
 ![Seasons Above 20 PPG](images/seasons_above_20.png)
 
 **Finding:** Sustaining 20+ PPG across five or more seasons demands both scoring ability and durability across an 82-game schedule where players compete almost every other day. Fewer than 15 players in the dataset clear this bar, making it one of the strongest markers of all-time offensive greatness. The list is dominated by players like Michael Jordan, Karl Malone, and LeBron James — not Wilt Chamberlain, whose peak scoring was historic but concentrated into fewer elite seasons.
+
 ---
 
 ### Q5 · Scoring Tier Distribution in 2022
