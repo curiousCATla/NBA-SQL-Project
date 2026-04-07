@@ -4,8 +4,25 @@
 
 This project explores 74 years of NBA history (1950–2023) using a SQLite database built from four Kaggle datasets. Using SQL embedded in Python, I queried the database to investigate league-wide scoring trends, individual player performance, rookie history, and year-over-year progression. Results are visualized using matplotlib and seaborn.
 
+**Skills:** `SQL` · `SQLite` · `Python` · `pandas` · `matplotlib` · `seaborn`
+
 **Dataset Source:** [NBA Players and Team Data — Kaggle](https://www.kaggle.com/datasets/loganlauton/nba-players-and-team-data?resource=download&select=NBA+Player+Stats%281950+-+2022%29.csv)  
 **Data sourced from:** Basketball Reference (player stats) · Hoops Hype (salaries & payroll)
+
+---
+
+## Key Findings
+
+- **Wilt Chamberlain** holds the all-time single-season scoring record at **50.4 PPG** (1961–62), and accounts for 4 of the top 10 highest-scoring seasons in NBA history.
+- Only **~4% of NBA players** in 2022 qualified as "Elite" scorers (25+ PPG); nearly 70% fell below 10 PPG, reflecting the deep rosters and heavy rotation of modern basketball.
+- League-wide scoring has returned to 1960s levels after a defensive valley spanning roughly 1994–2010, driven by the rise of the three-point era.
+- Fewer than 15 players have ever averaged 20+ PPG in 5 or more seasons — a durability threshold that proves harder to sustain than peak scoring alone.
+- The **modern three-point era** has produced some of the highest-scoring rookie classes since the 1960s.
+- A **PPG-per-dollar** metric systematically undervalues non-scorers — defenders and playmakers like Draymond Green and Rudy Gobert appear expensive, but their real value lies outside the scoring column.
+- A **composite production score** (points + rebounds + assists + steals + blocks − turnovers) identified Jalen Brunson and Naz Reid as severely undervalued in 2021 — both have since grown into key rotation or franchise-level players.
+- **Point guards** carry the highest position premium in the market; **shooting guards** are the most underpaid relative to their production share, likely because teams carry more guards, diluting position-wide salary averages.
+- **Production peaks before pay** — players tend to perform best in their mid-to-late 20s, but maximum salary typically arrives two to three years later, reflecting the inherent lag between demonstrated performance and the next contract cycle.
+- The **1998–99 availability anomaly** has two distinct causes: NBA expansion through the mid-1990s inflated the player pool, while the labor lockout compressed that season to 50 games — mechanically capping every player's availability rate regardless of health.
 
 ---
 
@@ -17,7 +34,7 @@ All queries are written in SQLite and executed via `pd.read_sql_query()`. Key te
 
 | Technique | Where Used |
 |-----------|------------|
-| **Common Table Expressions (CTEs)** | Multi-step queries in analyses 3–9 — chains `clean_stats → player_avg → ranked output` |
+| **Common Table Expressions (CTEs)** | Multi-step queries in analyses 3–15 — chains `clean_stats → player_avg → ranked output` |
 | **Window Functions** — `RANK() OVER (PARTITION BY ...)` | Rookie scoring leaders — ranks rookies within each season |
 | **Window Functions** — `PERCENT_RANK() OVER (ORDER BY ...)` | Player comparison tool  — computes league-wide percentile rank for each stat |
 | **Window Functions** — `PERCENT_RANK() OVER (PARTITION BY season ...)` | Availability tax — ranks each player's salary within their own season to filter by relative standing rather than a fixed dollar threshold |
@@ -113,7 +130,7 @@ NBA_SQL/
 
 ```bash
 # Install dependencies
-pip install pandas matplotlib seaborn adjustText
+pip install -r requirements.txt
 
 # Build the database from CSV files
 python load_data.py
@@ -122,9 +139,31 @@ python load_data.py
 python visualization/analysis3.py
 ```
 
+**Dependencies** (`requirements.txt`): `pandas`, `numpy`, `matplotlib`, `seaborn`, `adjustText`
+
 ---
 
 ## Analyses
+
+| # | Question | Key SQL Technique |
+|---|----------|-------------------|
+| Q1 | Top 10 single-season scorers of all time | `ORDER BY`, `LIMIT` |
+| Q2 | Players averaging 25+ PPG and 7+ APG | Computed columns, inline filter |
+| Q3 | League-wide PPG trend (1950–2023) | CTE, `AVG()`, `GROUP BY` season |
+| Q4 | Players with 5+ seasons of 20+ PPG | CTE chain, `HAVING` |
+| Q5 | Scoring tier distribution in 2022 | `CASE WHEN` classification |
+| Q6 | Highest-scoring rookie each year since 1953 | 4-step CTE, `RANK() OVER (PARTITION BY)` |
+| Q7 | Interactive percentile radar chart (2022) | `PERCENT_RANK() OVER ()`, polar chart |
+| Q8 | Top 3 scorers per team in 2022 | `RANK() OVER (PARTITION BY Tm)`, multi-CTE join |
+| Q9 | Most improved scorers from 2021 to 2022 | Multi-season CTE, self-join on player name |
+| Q10 | Most consistent scorers in 2022 | Manual `STDDEV`, cross-table 3-key join |
+| Q11 | Salary efficiency — PPG per $1M (2021) | Cross-table join, computed ratio |
+| Q12 | Most underpaid/overpaid by composite score (2021) | `RANK() OVER ()`, composite metric |
+| Q13 | Position premium — salary vs. production share (2021) | `SUM() OVER ()`, `SUBSTR` + `INSTR` |
+| Q14 | Salary curve by age (1990–2021) | `MAX() OVER ()`, indexed dual-axis chart |
+| Q15 | Availability tax — salary paid for missed games | `PERCENT_RANK() OVER (PARTITION BY season)` |
+
+---
 
 ### Q1 · Top 10 Single-Season Scorers of All Time
 
@@ -139,9 +178,11 @@ LIMIT 10;
 
 ![Top 10 Single-Season Scorers](images/top_10_scorers.png)
 
+**Finding:** Wilt Chamberlain's 1961–62 season is the highest-scoring in NBA history, and he accounts for 4 of the top 10 spots. James Harden's 2018–19 season is the most recent entry. Notably, Chamberlain's two championship seasons (1967 and 1972) do not appear here — his scoring dropped in those years as he shifted toward rebounding and facilitating, suggesting that peak individual scoring and winning a title are not always aligned.
+
 ---
 
-### Q2 · Players Averaging 25+ PPG and 7+ APG in a Single Season
+### Q2 · Which players averaged 25+ PPG and 7+ AST in the same season?
 
 Computed columns calculate per-game averages inline. `adjustText` prevents label overlap on the scatter plot.
 
@@ -160,7 +201,7 @@ ORDER BY PPG DESC;
 
 ---
 
-### Q3 · League-Wide Average PPG Trend (1950–2023)
+### Q3 · How has the league-wide average points per game changed each season?
 
 A two-step CTE first deduplicates traded players, then averages PPG per season across the full league.
 
@@ -198,6 +239,7 @@ ORDER BY seasons_above_20 DESC;
 
 ![Seasons Above 20 PPG](images/seasons_above_20.png)
 
+**Finding:** Sustaining 20+ PPG across five or more seasons demands both scoring ability and durability across an 82-game schedule where players compete almost every other day. Fewer than 15 players in the dataset clear this bar, making it one of the strongest markers of all-time offensive greatness. The list is dominated by players like Michael Jordan, Karl Malone, and LeBron James — not Wilt Chamberlain, whose peak scoring was historic but concentrated into fewer elite seasons.
 ---
 
 ### Q5 · Scoring Tier Distribution in 2022
@@ -215,6 +257,8 @@ END AS scoring_tier
 ```
 
 ![Scoring Tiers 2022](images/scoring_tiers_2022.png)
+
+**Finding:** Nearly 70% of NBA players in 2022 averaged under 10 points per game, reflecting the deep rosters and constant rotation patterns of modern basketball. Raw point totals can be misleading here — a bench player logging minutes in garbage time can post identical numbers to a defined rotation player carrying real responsibility. Minutes played and efficiency metrics would give a clearer picture of where each tier truly sits on the value spectrum. 
 
 ---
 
@@ -236,11 +280,13 @@ WITH clean_stats AS ( ... ),
 SELECT Player, Season, PPG FROM ranked_rookies WHERE ppg_rank = 1 AND Season >= 1953;
 ```
 
+
 ![Rookie PPG by Season](images/highest_rookie_ppg_by_season.png)
 
+**Finding:** Wilt Chamberlain's rookie season in 1959-1960 was the highest-scoring NBA rookie season in history, with 2,707 points, averaging 37.6 points per game. 
 ---
 
-### Q7 · Interactive Player Comparison — Percentile Radar Chart
+### Q7 · Interactive Player Comparison — Percentile Radar Chart (2022)
 
 `PERCENT_RANK()` window functions compute each player's league-wide percentile rank across five stats simultaneously. The radar chart is drawn using matplotlib's polar projection.
 
@@ -262,8 +308,9 @@ FROM league_2022;
 
 ---
 
-### Q8 · Who were the top 3 scorers on each team in the 2022 season?
-Three CTEs that isolate data from the 2022 season, find each team's total points, partition the player data based on teams, and assign rankings based on total points. 
+### Q8 · Top 3 Scorers per Team in 2022
+
+Three CTEs isolate the 2022 season, compute each team's total points, then rank each player within their team to surface the top three contributors.
 
 ```sql
   WITH clean_2022 AS (
@@ -300,7 +347,10 @@ Three CTEs that isolate data from the 2022 season, find each team's total points
   ORDER BY t.team_total_pts DESC, r.team_ranking;
 
 ```
+**Finding:** Ordering teams by total season points surfaces the league's most prolific offenses in 2022. Most top-scoring teams show a clear hierarchy — one dominant scorer well ahead of the second and third options — while mid-tier teams tend to distribute scoring more evenly. Because the query ranks by total points rather than per-game average, it naturally rewards availability: a player who averaged 18 PPG across 75 games will rank above one who averaged 22 PPG in 40 games, making it a combined measure of production and durability.
+
 ---
+
 ### Q9 · Most Improved Scorers from 2021 to 2022
 
 Three CTEs isolate each season's data, then a `JOIN` on player name links a player's 2021 and 2022 stats to compute the improvement delta.
@@ -313,6 +363,8 @@ WITH season_2021 AS (SELECT Player, ROUND(PTS * 1.0 / G, 1) AS PPG_2021 FROM cle
                      FROM season_2022 s22 JOIN season_2021 s21 ON s22.Player = s21.Player)
 SELECT * FROM combined ORDER BY improvement DESC LIMIT 10;
 ```
+
+**Finding:** Year-over-year improvement can reflect expanded usage, a better system fit, recovery from injury, or a contract year push. The query requires at least 20 games played in both seasons, which filters out injury-shortened years and focuses on players whose role genuinely grew. Players with the largest deltas are often those transitioning from a supporting role into a starting position or taking on primary ball-handling duties for the first time.
 
 ---
 
@@ -396,7 +448,6 @@ RANK() OVER (ORDER BY cost_per_unit DESC) AS overpaid_rank
 ```
 
 The top 10 underpaid and top 5 overpaid players are labelled on the scatter. The `RdYlGn_r` colourmap is reversed so green = cheap (good value) and red = expensive (poor value).
-The top 10 mot
 
 ![Value for Money 2021](images/value_for_money_2021.png)
 
@@ -523,21 +574,6 @@ python player_prog.py
 
 ---
 
-## Key Findings
-
-- **Wilt Chamberlain** holds the all-time single-season scoring record at **50.4 PPG** (1961–62), nearly 10 points ahead of anyone else in history.
-- Only **~4% of NBA players** in 2022 qualified as "Elite" scorers (25+ PPG); over half fell into the "Bench" tier.
-- League-wide scoring has returned to 1960s levels after a defensive valley spanning roughly 1994–2010.
-- The **modern three-point era** has produced some of the highest-scoring rookie classes since the 1960s.
-- Fewer than 15 players in the dataset have ever averaged 20+ PPG in 5 or more seasons.
-- A **PPG-per-dollar** metric systematically undervalues non-scorers — defenders and playmakers like Draymond Green and Rudy Gobert appear expensive, but their real value lies outside the scoring column.
-- A **composite production score** (points + rebounds + assists + steals + blocks − turnovers) identified Jalen Brunson and Naz Reid as severely undervalued in 2021 — both have since grown into key rotation or franchise-level players.
-- **Point guards** carry the highest position premium in the market; **shooting guards** are the most underpaid relative to their production share, likely because teams carry more guards, which dilutes position-wide salary averages.
-- **Production peaks before pay** — players tend to perform best in their mid-to-late 20s, but maximum salary typically arrives two to three years later, reflecting the lag between performance and the next contract cycle.
-- The **1998–99 availability anomaly** has two separate causes: NBA expansion through the mid-1990s inflated the player pool, while the labor lockout compressed that season to 50 games — mechanically capping every player's availability rate regardless of health.
-
----
-
 ## Potential Extensions
 
 - **Hot streak analysis** — Use the `player_boxscores` table to find the longest consecutive 20+ point games
@@ -549,6 +585,8 @@ python player_prog.py
 - **Contract value model** — Use production score and age to estimate expected salary, then flag players who are priced significantly above or below their performance curve
 - **Availability by position and age** — Break down the availability tax analysis by position and age group to see whether certain roles or career stages carry higher injury risk
 
+
+---
 
 ## What I Learned
 
